@@ -14,8 +14,8 @@ cglibdoc()
 # cglibdoc()                - Display this help \n
 # \n
 # :: SEARCH ::  \n
-# findbydate         - does what it says
-# findlargefiles     - does what it says
+# findbydate         - does what it says \n
+# findlargefiles     - does what it says \n
 # \n
 # :: STRING and file TOOLS ::  \n
 # rmdoubleEmptyLines - remove double empty lines  \n
@@ -81,10 +81,62 @@ cglibdoc()
 # spiegel            - das Gleiche     - \n
 # ecl                - file an emacsclient senden - \n
 "
-
     echo -e $helptext
-    
+   
 }
+
+
+function pythonpath(){ 
+    python -c "import sys; from pprint import pprint as pr;  pr(sys.path)"
+}
+
+
+function pyclean() {
+
+    if [ $# -eq 0 ]
+    then
+        echo "No arguments supplied"
+        clean_dir=$PWD
+    else
+        clean_dir=$1
+    fi
+
+    echo "running clean in "${clean_dir}
+    
+    find . -type f -name "*.py[co]" -delete
+    find . -type d -name "__pycache__" -delete
+}
+
+
+#hcitool scan
+#bluez-test-audio  --help
+#bluez-test-audio connect OnTourXTB
+#bluez-test-audio connect 00:04:2B:00:1C:7A 
+
+
+tonull=" &>/dev/null"
+
+
+function ipdb(){
+ipython -c -i --simple-prompt "%run -d $@"
+}
+
+
+
+countfiles()
+{
+    find $1 -type f | wc -l
+}
+
+
+screenLockOff()
+{
+# http://xmodulo.com/control-screen-lock-settings-linux-desktop.html
+dconf write /org/gnome/desktop/screensaver/lock-enabled false 
+}
+
+
+
 
 
 
@@ -93,6 +145,265 @@ cglibdoc()
 # {
 # emacs23 -q --no-site-file --no-splash --no-window-system  -l ~/.ue $1
 # }
+
+
+# recursively remove all LaTeX-related files from a directory 
+# TODO implement dry-run option
+# explanations: -type f to restrict the matches to files-only;
+#  -iregex ooption for  case-insensitive search
+#  -regextype posix-extended: use posix-extended type, see http://www.gnu.org/software/findutils/manual/html_mono/find.html#posix_002degrep-regular-expression-syntax
+cleanLaTeXdir()
+{
+
+    # local delexpr='.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml|synctex.gz)$'
+    # now indluding also glossary-specific files: acn|acr|alg|gls|glsdefs|idx|ilg|ind|ist|not|ntn|xdy
+    local delexpr='.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml|synctex.gz|acn|acr|alg|gls|glsdefs|idx|ilg|ind|ist|not|ntn|xdy)$'
+
+
+    echo "will delete ..."
+    find $1  -type f -regextype posix-extended   -iregex ${delexpr}
+    find $1  -type f -regextype posix-extended   -iregex ${delexpr} | xargs  rm
+    #    find $1  -type f -regextype posix-extended   -iregex ${delexpr}
+    
+    # -n, --dry-run
+    #if  [ $# -gt "1" ]; then
+    #	echo "will do it"
+    #    if [ $# -eq "0" ]; then
+    #	echo "usage"
+    #	echo "'cleanLaTeXdir INDIR': simulate deletion of LaTeX-related files in INDIR and subdirectories"
+    #	echo "'cleanLaTeXdir INDIR ': simulate deletion of LaTeX-related files in INDIR and subdirectories"
+    
+    #    elif [ $# -eq "1" ]; then
+    #        echo "only simulating ... "
+    #	echo "will remove:" 
+    #        find $1  -type f -regextype posix-extended   -iregex '.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml)$'
+    #    fi
+}
+
+
+
+
+battery(){
+ 	upower -i $(upower -e | grep 'BAT') | grep -E "state|to\ full|percentage" 
+}
+
+
+shavingtime()
+{
+# -fs: full screen
+    mplayer -fs -tv driver=v4l2:device=/dev/video0 -fps 25 tv:// 
+}
+
+
+snapshot()
+{
+
+    #see http://askubuntu.com/questions/102755/how-do-i-use-ffmpeg-to-take-pictures-with-my-web-camera
+    local camdevice="/dev/v4l/by-id/usb-Generic_Lenovo_EasyCamera_200901010001-video-index0"
+    local outfile="/tmp/shot.jpeg"
+    echo "snapshot is in "$outfile
+    fswebcam -r 640x480 --jpeg 85 -D 2   ${outfile} 
+    # kein Licht :     mplayer tv:// -tv driver=v4l2:device=/dev/video0:width=1600:height=1200:outfmt=rgb24 -frames 3 -vo jpeg
+    #ffmpeg -f video4linux2 -i ${camdevice} -vframes 1 ${outfile}
+    display ${outfile}
+}
+
+
+
+
+spiegel()
+{
+    mplayer -tv driver=v4l2:device=/dev/video0 -fps 25 tv:// 
+}
+
+
+
+# http:/a/askubuntu.com/questions/1792/how-can-i-suspend-hibernate-from-command-line/131022#131022
+hibernate()
+{
+pmi action hibernate
+}
+
+suspend()
+{
+    pmi action suspend
+}
+
+optimizeMySQL()
+{
+    if [ -z "$1" ] ; then
+        echo
+        echo "ERROR: root password Parameter missing."
+        exit
+    fi
+    MYSQL_USER=root
+    MYSQL_PASS=$1
+    MYSQL_CONN="-u${MYSQL_USER} -p${MYSQL_PASS}"
+    TBLLIST=""
+    COMMA=""
+    SQL="SELECT CONCAT(table_schema,'.',table_name) FROM information_schema.tables WHERE"
+    SQL="${SQL} table_schema NOT IN ('information_schema','mysql','performance_schema')"
+    for DBTB in `mysql ${MYSQL_CONN} -ANe"${SQL}"`
+    do
+        echo OPTIMIZE TABLE "${DBTB};"
+        SQL="OPTIMIZE TABLE ${DBTB};"
+        mysql ${MYSQL_CONN} -ANe"${SQL}"
+    done
+}
+
+
+shrinkpdf()
+{   # Usage : shrinkpdf <filename>.pdf; will output to <filename>-shrunk.pdf
+    # shrink pdf using gs
+    # Quality level settings are
+    # /screen," the lowest resolution and lowest file size, but fine for viewing on a screen; 
+    # /ebook, " a mid-point in resolution and file size; 
+    # "/printer" and 
+    # /prepress," high-quality settings used for printing PDFs.
+    # Read more : http://www.ehow.com/how_6823473_reduce-pdf-file-size-linux.html
+    # other options
+    #~ gs	-q -dNOPAUSE -dBATCH -dSAFER \
+    #~ -sDEVICE=pdfwrite \
+    #~ -dCompatibilityLevel=1.4 \
+    #~ -dPDFSETTINGS=/prepress \
+    #~ -dEmbedAllFonts=true \
+    #~ -dSubsetFonts=true \
+    #~ -dColorImageDownsampleType=/Bicubic \
+    #~ -dColorImageResolution=72 \
+    #~ -dGrayImageDownsampleType=/Bicubic \
+    #~ -dGrayImageResolution=72 \
+    #~ -dMonoImageDownsampleType=/Bicubic \
+    #~ -dMonoImageResolution=72 \
+    # http://stackoverflow.com/questions/2670809/how-to-get-ghostscript-to-use-embedded-fonts-in-pdf
+    # bw http://unix.stackexchange.com/questions/93959/how-to-convert-a-color-pdf-to-black-white
+    #echo $1
+
+    # -sColorConversionStrategy=Gray \
+    # -dProcessColorModel=/DeviceGray \
+
+
+    local mpath=`getpath $1`
+    local mbase=`getbase $1`
+    local mext=`getext $1`
+    local out=${mpath}${mbase}'-shrunk.'${mext}
+    echo 'writing to '${out}
+    
+    gs -dNOPAUSE -dBATCH \
+	-sDEVICE=pdfwrite \
+        -sColorConversionStrategy=/Mono \
+        -sColorConversionStrategyForImages=/Mono \
+	-dSubsetFonts=true\
+	-dEmbedAllFonts=true \
+        -dCompressFonts=true \
+        -dSubsetFonts=true \
+	-dCompatibilityLevel=1.4 \
+	-dPDFSETTINGS=/ebook\
+	-sOutputFile=${out} \
+	$1 #&>/dev/null
+
+    echo -n 'before conversion: '
+    du -mah ${1} 
+    echo -n 'after conversion: '
+    du -mah ${out} 
+}
+
+
+
+
+scan2bw()
+{
+    # schwarz weiss scan
+    #echo "scan2bw ist gut fuer manuell nachzubearbeitende Zeugnisse"
+    #echo "will scan to files called out%d.pnm"
+    
+    #erode: http://www.imagemagick.org/discourse-server/viewtopic.php?t=18707
+    # example: convert salo-juni.pdf  -morphology thicken '3x1:1,0,1' test.pdf
+
+    docname="document-bw.pdf"
+    #rm -f out*.pnm
+    scanimage --batch=out%d.pnm --progress  \
+	--batch-start=11 --batch-prompt --resolution=300 --mode Lineart
+    convert out*.pnm  -morphology thicken '3x1:1,0,1'    ${docname}
+}
+
+
+scanbwfiles(){
+    if [ $# -ne "1" ]; then
+    	echo "usage: scanbwfiles <target>"
+        return 1
+    fi
+    
+    local mbase=`getbase $1`
+    
+    scan2bw 
+
+    shrinkpdf document-bw.pdf &>/dev/null
+    
+    mv -iv document-bw-shrunk.pdf ${mbase}".pdf"  
+    rm out* -f
+    rm document* -f
+    echo -n 'file size: '
+    du -mah ${mbase}".pdf"
+    
+    
+}
+
+
+
+scan2pdf()
+{
+    # document batch scanner
+    # see also: shrinkpdf, da man den output bestimmt noch shrinken muss
+    #--mode Lineart|Gray|Color [Gray]
+    # Scan Images
+    #scanimage --device=epson:/dev/sg1 --batch=out%d.pnm \
+    #	--batch-start=11 --wait-for-button --resolution=180
+    # A4: Das hier-x 210 -y 297
+    
+    #-resolution 600
+    docname="document.pdf"
+    rm out*.pnm
+    scanimage --batch=out%d.pnm --progress  \
+	--batch-start=11 --batch-prompt --resolution=360
+    convert out*.pnm     ${docname}
+
+
+
+    # # ggf letztest Bild loeschen (brauchmernet, CG)
+    # #ls out*.pnm | sort | tail -1 | xargs rm
+
+    # # Create TIFFs
+    # echo "Creating TIFF images..."
+    # ls out*.pnm | while read p; do echo $p; q=`echo $p |
+    #  sed 's/out\(.*\)\.pnm/tiff\1.tif/'`; echo $q; cat $p |
+    # 	pnmrotate -noantialias -0 | pnmtotiff -lzw > $q; done
+
+
+    # # echo "Creating TIFF images..."
+    # # ls out*.pnm | while read p; do echo $p; q=`echo $p |
+    # #  sed 's/out\(.*\)\.pnm/tiff\1.tif/'`; echo $q; cat $p |
+    # # 	pnmrotate -noantialias -90 | pnmtotiff -lzw > $q; done
+
+    # # Create one big TIFF
+    # echo "Combining TIFF images..."
+    # tiffcp -c lzw tiff* document.tif
+
+    # # Create PDF
+    # echo "Creating PDF document..."
+    # tiff2pdf -z document.tif -o document.pdf -p A4 \
+    # 	-a "Christian Geng" \
+    # 	-t "Titel leer" -s "http://christiangeng.de" \
+    # 	-k 'Affiliation'
+
+    # #echo "Optimizing PDF..."
+    # #pdfopt document.pdf document_opt.pdf
+
+    # echo "Cleaning up..."
+    #rm *.pnm
+    #rm tiff*.tif
+    #rm document.tif
+    #rm document.pdf
+}
 
 
 
@@ -192,15 +503,15 @@ compi()
     lspci -v | perl -ne '/VGA/../^$/ and /VGA|Kern/ and print'
 }
 
-pdf2A4()
-{
-    gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dSAFER \
-        -dCompatibilityLevel="1.3" -dPDFSETTINGS="/printer" \
-        -dSubsetFonts=true -dEmbedAllFonts=true \
-        -sPAPERSIZE=a4 -sOutputFile="pdf2A4-output.pdf" \
-        -c "<</BeginPage{0.9 0.9 scale 29.75 42.1 translate}>> setpagedevice" \
-        -f $1
-}
+# pdf2A4()
+# {
+#     gs -q -dNOPAUSE -dBATCH -sDEVICE=pdfwrite -dSAFER \
+#         -dCompatibilityLevel="1.3" -dPDFSETTINGS="/printer" \
+#         -dSubsetFonts=true -dEmbedAllFonts=true \
+#         -sPAPERSIZE=a4 -sOutputFile="pdf2A4-output.pdf" \
+#         -c "<</BeginPage{0.9 0.9 scale 29.75 42.1 translate} >> setpagedevice" \
+#         -f ${1}
+# }
 
 
 
@@ -215,17 +526,6 @@ gitrepoinfo()
 ecl()
 {
     emacsclient -a emacs --no-wait $1
-}
-
-shavingtime()
-{
-    mplayer -tv driver=v4l2:device=/dev/video0 -fps 25 tv:// 
-}
-
-
-spiegel()
-{
-    mplayer -tv driver=v4l2:device=/dev/video0 -fps 25 tv:// 
 }
 
 
@@ -268,9 +568,9 @@ markdownhtmlfixUmlaute()
 # Umlaute im Stream mit sed ersetzen
 # Untested
 {
-    sed -i -e 's/ä/\&auml;/g' \
-        -e 's/ü/\&uuml;/g' \
-        -e 's/ö/\&ouml;/g' $1
+    sed -i -e 's/Ã¤/\&auml;/g' \
+        -e 's/Ã¼/\&uuml;/g' \
+        -e 's/Ã¶/\&ouml;/g' $1
 }
 
 generategoodpasswd()
@@ -363,8 +663,8 @@ ytpl2mp3()
 vulnerable()
 {
     # http://www.spiegel.de/netzwelt/web/sicherheitsluecke-shellshock-bedroht-linux-rechner-und-macs-a-993688.html
-    # Wenn nach Eingabe dieser Zeile "vulnerable" auf dem Bildschirm angezeigt wird, dann ist der Rechner von der Sicherheitslücke betroffen. 
-    # Wird die Warnmeldung "bash: error importing function definition for x" ausgegeben, dann ist die Lücke bereits gestopft. 
+    # Wenn nach Eingabe dieser Zeile "vulnerable" auf dem Bildschirm angezeigt wird, dann ist der Rechner von der SicherheitslÃ¼cke betroffen. 
+    # Wird die Warnmeldung "bash: error importing function definition for x" ausgegeben, dann ist die LÃ¼cke bereits gestopft. 
     env x='() { :;}; echo vulnerable' bash -c "echo this is a test" 
 }
 
@@ -451,119 +751,6 @@ treel()
 
 
 
-shrinkpdf()
-{   # Usage : shrinkpdf <filename>.pdf; will output to <filename>-shrunk.pdf
-    # shrink pdf using gs
-    # Quality level settings are
-    # /screen," the lowest resolution and lowest file size, but fine for viewing on a screen; 
-    # /ebook, " a mid-point in resolution and file size; 
-    # "/printer" and 
-    # /prepress," high-quality settings used for printing PDFs.
-    # Read more : http://www.ehow.com/how_6823473_reduce-pdf-file-size-linux.html
-    # other options
-    #~ gs	-q -dNOPAUSE -dBATCH -dSAFER \
-    #~ -sDEVICE=pdfwrite \
-    #~ -dCompatibilityLevel=1.4 \
-    #~ -dPDFSETTINGS=/prepress \
-    #~ -dEmbedAllFonts=true \
-    #~ -dSubsetFonts=true \
-    #~ -dColorImageDownsampleType=/Bicubic \
-    #~ -dColorImageResolution=72 \
-    #~ -dGrayImageDownsampleType=/Bicubic \
-    #~ -dGrayImageResolution=72 \
-    #~ -dMonoImageDownsampleType=/Bicubic \
-    #~ -dMonoImageResolution=72 \
-
-    #echo $1
-    local mpath=`getpath $1`
-    local mbase=`getbase $1`
-    local mext=`getext $1`
-    local out=${mpath}${mbase}'-shrunk.'${mext}
-    echo 'writing to '${out}
-    
-    gs -dNOPAUSE -dBATCH \
-	-sDEVICE=pdfwrite \
-	-dSubsetFonts=true\
-	-dEmbedAllFonts=true \
-	-dCompatibilityLevel=1.4 \
-	-dPDFSETTINGS=/ebook\
-	-sOutputFile=${out} \
-	$1 &>/dev/null
-
-    echo -n 'before conversion: '
-    du -mah ${1} 
-    echo -n 'after conversion: '
-    du -mah ${out} 
-}
-
-
-
-scan2bw()
-{
-    # schwarz weiss scan
-    echo "scan2bw ist gut fuer manuell nachzubearbeitende Zeugnisse"
-    echo "will scan to files called out%d.pnm"
-    scanimage --batch=out%d.pnm --progress  \
-	--batch-start=11 --batch-prompt --resolution=300 --mode Lineart
-}
-
-
-
-scan2pdf()
-{
-    # document batch scanner
-    # see also: shrinkpdf, da man den output bestimmt noch shrinken muss
-    #--mode Lineart|Gray|Color [Gray]
-    # Scan Images
-    #scanimage --device=epson:/dev/sg1 --batch=out%d.pnm \
-    #	--batch-start=11 --wait-for-button --resolution=180
-    # A4: Das hier-x 210 -y 297
-    
-    #-resolution 600
-    docname="document.pdf"
-    rm out*.pnm
-    scanimage --batch=out%d.pnm --progress  \
-	--batch-start=11 --batch-prompt --resolution=360
-    convert out*.pnm     ${docname}
-
-
-
-    # # ggf letztest Bild loeschen (brauchmernet, CG)
-    # #ls out*.pnm | sort | tail -1 | xargs rm
-
-    # # Create TIFFs
-    # echo "Creating TIFF images..."
-    # ls out*.pnm | while read p; do echo $p; q=`echo $p |
-    #  sed 's/out\(.*\)\.pnm/tiff\1.tif/'`; echo $q; cat $p |
-    # 	pnmrotate -noantialias -0 | pnmtotiff -lzw > $q; done
-
-
-    # # echo "Creating TIFF images..."
-    # # ls out*.pnm | while read p; do echo $p; q=`echo $p |
-    # #  sed 's/out\(.*\)\.pnm/tiff\1.tif/'`; echo $q; cat $p |
-    # # 	pnmrotate -noantialias -90 | pnmtotiff -lzw > $q; done
-
-    # # Create one big TIFF
-    # echo "Combining TIFF images..."
-    # tiffcp -c lzw tiff* document.tif
-
-    # # Create PDF
-    # echo "Creating PDF document..."
-    # tiff2pdf -z document.tif -o document.pdf -p A4 \
-    # 	-a "Christian Geng" \
-    # 	-t "Titel leer" -s "http://christiangeng.de" \
-    # 	-k 'Affiliation'
-
-    # #echo "Optimizing PDF..."
-    # #pdfopt document.pdf document_opt.pdf
-
-    # echo "Cleaning up..."
-    #rm *.pnm
-    #rm tiff*.tif
-    #rm document.tif
-    #rm document.pdf
-}
-
 
 
 wcpdf()
@@ -607,9 +794,9 @@ removeumlaute()
     local mbase=`getbase ${i}`
     local mext=`getext ${i}`
     local tmpfile="/tmp/ohneUmlaut.txt"
-    sed "s/\ä/ae/g"   ${1}  \
-        |  	sed "s/\ü/ue/g"  \
-        |  	sed "s/\ö/oe/g" >  ${tmpfile}
+    sed "s/\Ã¤/ae/g"   ${1}  \
+        |  	sed "s/\Ã¼/ue/g"  \
+        |  	sed "s/\Ã¶/oe/g" >  ${tmpfile}
     mv -v  ${tmpfile} ${1}
 }
 
@@ -745,38 +932,7 @@ extractmp4audio()
 }
 
 
-# recursively remove all LaTeX-related files from a directory 
-# TODO implement dry-run option
-# explanations: -type f to restrict the matches to files-only;
-#  -iregex ooption for  case-insensitive search
-#  -regextype posix-extended: use posix-extended type, see http://www.gnu.org/software/findutils/manual/html_mono/find.html#posix_002degrep-regular-expression-syntax
-cleanLaTeXdir()
-{
 
-    # local delexpr='.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml|synctex.gz)$'
-    # now indluding also glossary-specific files: acn|acr|alg|gls|glsdefs|idx|ilg|ind|ist|not|ntn|xdy
-    local delexpr='.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml|synctex.gz|acn|acr|alg|gls|glsdefs|idx|ilg|ind|ist|not|ntn|xdy)$'
-
-
-    echo "will delete ..."
-    find $1  -type f -regextype posix-extended   -iregex ${delexpr}
-    find $1  -type f -regextype posix-extended   -iregex ${delexpr} | xargs  rm
-    #    find $1  -type f -regextype posix-extended   -iregex ${delexpr}
-    
-    # -n, --dry-run
-    #if  [ $# -gt "1" ]; then
-    #	echo "will do it"
-    #    if [ $# -eq "0" ]; then
-    #	echo "usage"
-    #	echo "'cleanLaTeXdir INDIR': simulate deletion of LaTeX-related files in INDIR and subdirectories"
-    #	echo "'cleanLaTeXdir INDIR ': simulate deletion of LaTeX-related files in INDIR and subdirectories"
-    
-    #    elif [ $# -eq "1" ]; then
-    #        echo "only simulating ... "
-    #	echo "will remove:" 
-    #        find $1  -type f -regextype posix-extended   -iregex '.*\.(aux|blg|dvi|bbl|log|pfg|nav|out|snm|toc|bcf|run.xml)$'
-    #    fi
-}
 
 # croppdfinplace 
 croppdfinplace()
@@ -804,9 +960,6 @@ aiff2wav()
 	[[ -f "$i" ]] && { echo -n "Processing ${i}..."; sox  "${i}" "${out}" &>/dev/null  && echo "done." || echo "failed."; }
     done
 }
-
-
-
 
 pdf2grayscale()
 # http://superuser.com/questions/104656/convert-a-pdf-to-greyscale-on-the-command-line-in-floss
