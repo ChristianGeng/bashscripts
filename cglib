@@ -108,6 +108,7 @@ function pythonpath(){
     python -c "import sys; from pprint import pprint as pr;  pr(sys.path)"
 }
 
+
 function pyclean() {
 
     if [ $# -eq 0 ]
@@ -117,13 +118,17 @@ function pyclean() {
     else
         clean_dir=$1
     fi
-
+    # find -type d -name records -prune -exec rm -rf {} \;                                                                 
     echo "running clean in "${clean_dir}
     
-    find . -type f -name "*.py[co]" -delete
-    find . -type d -name "__pycache__" -delete
-}
+    find ${clean_dir} -type f -name "*.py[co]" -delete
+    find ${clean_dir} -type d -name "__pycache__" -delete
+    # find $clean_dir -name \*.pyc -o -name \*.pyo -o -name __pycache__ -delete
 
+    find  ${clean_dir} -iname "*flymake*" -delete
+    find . -iname "#*.py#"  -delete
+    find ${clean_dir} -name "TEST-*.xml" -delete
+ }
 
 #hcitool scan
 #bluez-test-audio  --help
