@@ -84,12 +84,29 @@ cglibdoc()
     echo -e $helptext
    
 }
+function scalastyle(){
+    scalastylejar="/home/CHRGENG/bin/scalastyle/scalastyle_2.12-1.0.0-batch.jar"
+    scalastyleconfig="/home/CHRGENG/bin/scalastyle/scalastyle_config.xml"
+    java -jar  $scalastylejar  --config $scalastyleconfig  
+    # java -jar ${scalastylejar}  "$@"
+}
 
+function findinfiles(){
+    # -e : Pattern
+    grep -rnw $1  -e $2
+}
+
+# https://stackoverflow.com/questions/9607295/how-do-i-find-my-rsa-key-fingerprint
+# I used this shell function to create my fingerprint in /home/CHRGENG/.ssh
+# with fingerprint id_rsa.pub
+fingerprint() {
+    pubkeypath="$1"
+    ssh-keygen -E md5 -lf "$pubkeypath" | awk '{ print $2 }' | cut -c 5-
+}
 
 function pythonpath(){ 
     python -c "import sys; from pprint import pprint as pr;  pr(sys.path)"
 }
-
 
 function pyclean() {
 
